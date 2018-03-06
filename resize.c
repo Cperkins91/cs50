@@ -1,4 +1,4 @@
-// Copies a BMP file
+// Resizes a BMP file
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,12 +55,13 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Unsupported file format.\n");
         return 4;
     }
-
-    //Update Header info
+    // Remember old header info and get old padding
     int padding_outfile, padding_infile, biWidth_infile, biHeight_infile;
     padding_infile = (4 - (bi.biWidth * sizeof(RGBTRIPLE)) % 4) % 4;
     biWidth_infile = bi.biWidth;
     biHeight_infile = abs(bi.biHeight);
+
+    //Update Header info and get new padding
     bi.biWidth *= resize;
     bi.biHeight *= resize;
     padding_outfile = (4 - (bi.biWidth * sizeof(RGBTRIPLE)) % 4) % 4;
@@ -73,38 +74,32 @@ int main(int argc, char *argv[])
     // write outfile's BITMAPINFOHEADER
     fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, outptr);
 
-    // determine padding for scanlines
-//    int padding = (4 - (bi.biWidth * sizeof(RGBTRIPLE)) % 4) % 4;
-
     // iterate over infile's scanlines
-    for (int i = 0, biHeight = abs(biHeight_infile); i < biHeight; i++)
-    {
+    for (int i = 0, biHeight = abs(biHeight_infile); i < biHeight; i++) {
         RGBTRIPLE triple;
         RGBTRIPLE scanline[bi.biWidth * resize];
 
         // iterate over pixels in scanline
-        for (int j = 0; j < biWidth_infile; j++)
-        {
+        for (int j = 0; j < biWidth_infile; j++) {
             // read RGB triple from infile
             fread(&triple, sizeof(RGBTRIPLE), 1, inptr);
+            // write pixel into scanline scaling horizontally
             for (int k = 0; k < resize; k++) {
                 scanline[j*resize + k] = triple;
             }
         }
+        // Rewrite scanlines to scale Vertically
         for (int j = 0; j < resize; j++) {
             // write RGB triple to outfile
             fwrite(&scanline, sizeof(RGBTRIPLE), bi.biWidth, outptr);
 
             // then add it back (to demonstrate how)
-            for (int k = 0; k < padding_outfile ; k++)
-            {
+            for (int k = 0; k < padding_outfile ; k++) {
                 fputc(0x00, outptr);
             }
         }
-
         // skip over padding, if any
         fseek(inptr, padding_infile, SEEK_CUR);
-
     }
 
     // close infile
